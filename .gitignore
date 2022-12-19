@@ -1,0 +1,6 @@
+__pycache__/
+miniconda.sh
+parameters/
+data/
+models/
+logs/
