@@ -6,7 +6,7 @@ SETUPFILE=$CONDAENV.txt
 
 wget -O $MINIOUTPATH $MINICONDA
 bash $MINIOUTPATH
-conda create --name $CONDAENV --file $SETUPFILE
+conda env create --file $SETUPFILE --name $CONDAENV
 
 ### Git setup ###
 # Uncomment the following lines if installing without pulling from git first
