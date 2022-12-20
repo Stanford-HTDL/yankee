@@ -4,3 +4,5 @@ parameters/
 data/
 models/
 logs/
+
+_google_creds*

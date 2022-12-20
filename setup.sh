@@ -20,8 +20,6 @@ conda create --name $CONDAENV --file $SETUPFILE
 mkdir parameters
 mkdir parameters/experiments
 mkdir data
-mkdir data/raw
-mkdir data/processed
 mkdir models
 mkdir logs
 
