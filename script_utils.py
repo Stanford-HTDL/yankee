@@ -7,8 +7,6 @@ from typing import Callable, Dict, List, Tuple
 
 import google.cloud.storage as storage
 
-from .io_utils import IOUtils
-
 __all__ = ['get_args']
 
 SCRIPT_PATH = os.path.basename(__file__)
@@ -50,6 +48,7 @@ def logging_decorator(f) -> Callable:
 
         # HERE you can append any keys which you don't want to write to a log file
         secret_keys.append("credentials")
+        secret_keys.append("google_application_credentials")
         secret_keys.append("planet_api_key")
         secret_keys.append("PLANET_API_KEY")
 
@@ -87,21 +86,22 @@ def gcs_args_decorator(f) -> Callable:
     @functools.wraps(f)
     def wrapper(*args, **kwargs) -> Tuple[Dict, List]:
         parser = argparse.ArgumentParser()
-        parser.add_argument(
-            "--gcs-vars",
-            type=str,
-            help="Path to a csv file containing Google Cloud Access keys. "
-            "This can be a Google Cloud Storage path.",
-        )
+        # parser.add_argument(
+        #     "--gcs-vars",
+        #     type=str,
+        #     help="Path to a csv file containing Google Cloud Access keys. "
+        #     "This can be a Google Cloud Storage path.",
+        # )
         parser.add_argument(
             "--gcs-project-name",
             help="Name of Google Cloud project.",
         )
         p_args, _ = parser.parse_known_args()
-        gcs_args = IOUtils.read_csv(p_args.gcs_vars)
+        # gcs_args = IOUtils.read_csv(p_args.gcs_vars)
         p_args = vars(p_args)
         fn_args = f(*args, **kwargs)    
-        p_args = {**p_args, **fn_args, **gcs_args}
+        # p_args = {**p_args, **fn_args, **gcs_args}
+        p_args = {**p_args, **fn_args}
 
         if "GOOGLE_APPLICATION_CREDENTIALS" in p_args.keys():
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = p_args["GOOGLE_APPLICATION_CREDENTIALS"]
@@ -149,8 +149,8 @@ def gcs_args_decorator(f) -> Callable:
 
 
 @logging_decorator
-@gcs_args_decorator
-def get_args(**kwargs) -> Dict:
+# @gcs_args_decorator
+def get_args(secret_keys: list = list(), **kwargs) -> Dict:
     '''
     Pass default arguments from the script into this method.
     '''
@@ -168,8 +168,9 @@ def get_args(**kwargs) -> Dict:
     # script_args = IOUtils.read_csv(p_args.script_vars)
     # p_args = vars(p_args)
     # p_args = {**p_args, **kwargs, **script_args}
-    p_args = {**p_args, **kwargs}
-    return p_args
+    # p_args = {**p_args, **kwargs}
+    # return p_args
+    return kwargs, secret_keys
 
 
 if __name__ == "__main__":

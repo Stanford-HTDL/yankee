@@ -73,7 +73,9 @@ fi
 ### Make training-ready data ###
 UIDLENGTH=12
 EXPERIMENTUID=$(python -m get_uid --length $UIDLENGTH $*)
-TRAININGDIR=$DATASETDIR$EXPERIMENTUID/tiles/
+printf "Experiment UID: $EXPERIMENTUID\n"
+TILEDIR=tiles/
+TRAININGDIR=$DATASETDIR$TILEDIR
 mkdir -p TRAININGDIR
 printf "Training data directory: $TRAININGDIR\n"
 ZOOMS="12 13 14 15 16 17"

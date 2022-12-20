@@ -46,19 +46,17 @@ def get_random_string(length=12,
     return ''.join(random.choice(allowed_chars) for i in range(length))
 
 
-def get_args():
+def main():
     parser = argparse.ArgumentParser(
         description='Generate a random string of given length'
     )
     parser.add_argument('--length', type=int, default=12)
 
-    return parser.parse_args()
+    args, _ = parser.parse_known_args()
+    args = vars(args)
 
-
-def main():
-    length = get_args().length
-    _ = get_args(script_path=SCRIPT_PATH, length=length)
-    r_str = get_random_string(length=length)
+    args = get_args(secret_keys=["length"], script_path=SCRIPT_PATH, **args)
+    r_str = get_random_string(length=args["length"])
     print(r_str)
 
 
