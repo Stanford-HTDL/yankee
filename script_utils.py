@@ -49,6 +49,7 @@ def logging_decorator(f) -> Callable:
         # HERE you can append any keys which you don't want to write to a log file
         secret_keys.append("credentials")
         secret_keys.append("google_application_credentials")
+        secret_keys.append("gcs_credentials")
         secret_keys.append("planet_api_key")
         secret_keys.append("PLANET_API_KEY")
 
