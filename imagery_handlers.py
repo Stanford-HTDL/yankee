@@ -16,11 +16,11 @@ from PIL import Image, ImageDraw
 
 from light_pipe_geo import mercantile
 from light_pipe_rest import AiohttpGatherer
+from sample_handlers import QuadKeyTileHandler, StandardTileHandler
 from script_utils import get_random_string
 from storage_handlers import (AWSStorage, GCSStorage, LocalStorage,
                               StorageHandler)
 from target_handlers import GeoJsonHandler
-from sample_handlers import QuadKeyTileHandler, StandardTileHandler
 
 
 class ImageryHandler:
@@ -664,30 +664,6 @@ class PlanetScope(ImageryHandler):
         _, img_bs = storage_handler.get_as_bytes(img_path)
         _, udm_bs = storage_handler.get_as_bytes(udm_path)
         return asset_id, geojson, img_bs, udm_bs
-
-
-    # def _save_samples(self, input, save_dir: str):
-    #     """
-    #     1. Make paths
-    #     2. Save gdal Datasets to paths
-    #     3. return paths
-    #     """
-    #     all_null, zoom, quad_key, asset_id, geojson_grid_cell_dataset, \
-    #         geotiff_grid_cell_dataset, udm_grid_cell_dataset = input
-
-    #     out_sub_dir = self.storage_handler.join_paths(
-    #         save_dir, self.TILES_DIR, "zoom_" + str(zoom), quad_key + '/'
-    #     )
-    #     # os.makedirs(out_sub_dir, exist_ok=True)
-    #     out_udm_path = self.storage_handler.join_paths(out_sub_dir, f"{asset_id}_udm.tif")
-    #     out_target_path = self.storage_handler.join_paths(out_sub_dir, f"{asset_id}_target.tif")
-    #     out_geotiff_path = self.storage_handler.join_paths(out_sub_dir, f"{asset_id}_geotiff.tif")
-
-    #     self.storage_handler.set_from_gdal_mem_dataset(out_target_path, geojson_grid_cell_dataset)
-    #     self.storage_handler.set_from_gdal_mem_dataset(out_udm_path, udm_grid_cell_dataset)
-    #     self.storage_handler.set_from_gdal_mem_dataset(out_geotiff_path, geotiff_grid_cell_dataset)
-    #     exit() ########################################################################################################################################################################################################
-    #     return all_null, zoom, quad_key, asset_id, out_udm_path, out_target_path, out_geotiff_path
 
 
     def prepare_samples(

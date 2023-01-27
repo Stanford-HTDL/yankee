@@ -186,7 +186,6 @@ class QuadKeyTileHandler(SampleHandler):
             storage_handler.set_from_gdal_mem_dataset(out_target_path, geojson_grid_cell_dataset)
         storage_handler.set_from_gdal_mem_dataset(out_udm_path, udm_grid_cell_dataset)
         storage_handler.set_from_gdal_mem_dataset(out_geotiff_path, geotiff_grid_cell_dataset)
-        exit() ########################################################################################################################################################################################################
         return all_null, zoom, quad_key, asset_id, out_udm_path, out_target_path, out_geotiff_path             
 
 
