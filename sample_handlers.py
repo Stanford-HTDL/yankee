@@ -28,6 +28,7 @@ class SampleHandler:
 class QuadKeyTileHandler(SampleHandler):
     __name__ = "QuadKeyTileHandler"
 
+    TILES_MANIFEST_NAME = "tiles_manifest.json"
 
     def __init__(
         self
@@ -239,7 +240,8 @@ class QuadKeyTileHandler(SampleHandler):
             quad_key_dict[asset_id] = paths_dict
 
         results_bs = json.dumps(results_dict).encode('utf-8')
-        samples_manifest_path = storage_handler.join_paths(self.save_dir, self.TILES_MANIFEST_NAME)
+        results_bs = io.BytesIO(results_bs)
+        samples_manifest_path = storage_handler.join_paths(save_dir, self.TILES_MANIFEST_NAME)
         storage_handler.set_from_bytes(samples_manifest_path, results_bs)  
 
 

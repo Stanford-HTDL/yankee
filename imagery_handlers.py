@@ -88,7 +88,6 @@ class PlanetScope(ImageryHandler):
     ]
 
     TILES_DIR = "tiles/"
-    TILES_MANIFEST_NAME = "tiles_manifest.json"
 
     DEFAULT_SAMPLE_HANDLER_NAME: str = QuadKeyTileHandler.__name__
 
