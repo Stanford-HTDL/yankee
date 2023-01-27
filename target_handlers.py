@@ -36,7 +36,7 @@ class GeoJsonHandler(TargetHandler):
         parser = argparse.ArgumentParser()
         parser.add_argument(
             "--targets-dir",
-            required=True
+            # required=True
         )           
         parser.add_argument(
             "--from-filepath",

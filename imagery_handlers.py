@@ -6,26 +6,21 @@ import io
 import json
 import logging
 import os
-import requests
+from collections import OrderedDict
 from typing import Generator, List, Optional, Tuple
 
-from collections import OrderedDict
-
 import aiohttp
-from light_pipe import Data, Transformer
-from PIL import Image
-from PIL import ImageFont
-from PIL import ImageDraw 
+# import requests
+from light_pipe import AsyncGatherer, Data, Transformer
+from PIL import Image, ImageDraw
 
-# from PIL import GifImagePlugin
-# GifImagePlugin.LOADING_STRATEGY = GifImagePlugin.LoadingStrategy.RGB_ALWAYS
-
-from light_pipe_rest import AiohttpGatherer
 from light_pipe_geo import mercantile
+from light_pipe_rest import AiohttpGatherer
+from script_utils import get_random_string
 from storage_handlers import (AWSStorage, GCSStorage, LocalStorage,
                               StorageHandler)
 from target_handlers import GeoJsonHandler
-from script_utils import get_random_string
+from sample_handlers import QuadKeyTileHandler, StandardTileHandler
 
 
 class ImageryHandler:
@@ -39,6 +34,12 @@ class ImageryHandler:
         LocalStorage.__name__: LocalStorage,
         GCSStorage.__name__: GCSStorage,
         AWSStorage.__name__: AWSStorage
+    }
+
+    SAMPLE_HANDLERS = {
+        QuadKeyTileHandler.__name__: QuadKeyTileHandler,
+        StandardTileHandler.__name__: StandardTileHandler
+
     }    
 
 
@@ -78,8 +79,18 @@ class PlanetScope(ImageryHandler):
     MANIFEST_NAME: str = "order_manifest.json"
     RESPONSE_MANIFEST_NAME: str = "order_responses.json"
 
-    TIMELAPSES_SUB_DIR: str = "timelapses/"
+    TIMELAPSES_SUB_DIR: str = "gifs/"
+    PNGS_SUB_DIR: str = "pngs/"
     TRUNCATE = True
+
+    VALID_FC_INDICES = [
+        "ndvi", "ndwi", "msavi2", "mtvi2", "vari", "tgi"
+    ]
+
+    TILES_DIR = "tiles/"
+    TILES_MANIFEST_NAME = "tiles_manifest.json"
+
+    DEFAULT_SAMPLE_HANDLER_NAME: str = QuadKeyTileHandler.__name__
 
     # DEFAULT_PLANET_API_KEY: str = os.environ["PLANET_API_KEY"]
 
@@ -119,6 +130,10 @@ class PlanetScope(ImageryHandler):
         self.product_bundle = args["product_bundle"]
         self.archive_filename = args["archive_filename"]
         self.email_on_completion = args["email_on_completion"]
+
+        sample_handler_name = args["sample_handler"]
+        SampleHandler = self.SAMPLE_HANDLERS[sample_handler_name]
+        self.sample_handler = SampleHandler()
 
         self.args = args        
 
@@ -160,7 +175,7 @@ class PlanetScope(ImageryHandler):
         )
         parser.add_argument(
             "--planet-api-key",
-            required=True
+            # required=True
         )
         parser.add_argument(
             "--gcs-cred-str-path",
@@ -194,6 +209,10 @@ class PlanetScope(ImageryHandler):
         parser.add_argument(
             "--email-on-completion",
             default=self.DEFAULT_EMAIL_ON_COMPLETION
+        )
+        parser.add_argument(
+            "--sample-handler",
+            default=self.DEFAULT_SAMPLE_HANDLER_NAME
         )
         args = super().parse_args(parser=parser)
         return args
@@ -337,7 +356,7 @@ class PlanetScope(ImageryHandler):
         self, input: Tuple[Tuple[datetime.datetime, datetime.datetime], str, io.BytesIO]
     ):
         (start, end), path, bs = input
-        geojson = json.load(bs)
+        geojson = json.loads(bs.read())
         filters = self._make_papi_one_filters(
             max_cloud_cover=self.max_cloud_cover, 
             asset_names=self.asset_names
@@ -530,7 +549,7 @@ class PlanetScope(ImageryHandler):
         return manifest_path
 
 
-    def get_dict_from_bs(self, bs):
+    def get_dict_from_bs(self, bs: io.BytesIO):
         return json.loads(bs.read())
 
 
@@ -589,15 +608,6 @@ class PlanetScope(ImageryHandler):
         self.order_assets(manifest_path)
 
 
-    def prepare_samples(self):
-        raise NotImplementedError("This method has not been implemented yet.")
-
-
-    def make_monthly_mosaic_interval(self, input, start, end):
-        path, bs = input
-        return (start, end), path, bs     
-
-
     def get_tiles(self, geojson: dict, zooms, truncate):  
         geo_bounds = mercantile.geojson_bounds(geojson)
         west = geo_bounds.west
@@ -610,14 +620,127 @@ class PlanetScope(ImageryHandler):
             yield tile     
 
 
+    # def _get_tiles_from_bytes(self, input, zooms, truncate):
+    #     asset_id, geojson, img_bs, udm_bs = input
+    #     # geojson, img_bs, udm_bs = input
+    #     tiles = self.get_tiles(geojson=geojson, zooms=zooms, truncate=truncate)
+    #     return asset_id, geojson, img_bs, udm_bs, tiles
+
+
+    def _filter_paths_by_ext(self, paths: List[str], ext: str) -> List[str]:
+        paths_filtered = list()
+        for path in paths:
+            if path.endswith(ext):
+                paths_filtered.append(path)
+        return paths_filtered
+
+
+    def _get_asset_paths_from_list(
+        self, input: Tuple[str, dict], paths: List[str], 
+        assert_udm: Optional[bool] = True
+    ):
+        _, order_dict = input    
+        geojson = order_dict["geojson"]
+        asset_ids = order_dict["asset_ids"]
+
+        for asset_id in asset_ids:
+            img_path = None
+            udm_path = None
+            for path in paths:
+                path_name: str = path.split("/")[-1]
+                if path_name.startswith(asset_id):
+                    if path_name.split(".")[0].endswith("udm"):
+                        udm_path = path
+                    else:
+                        img_path = path
+            assert img_path is not None, f"Image path not found for asset {asset_id}."
+            if assert_udm:
+                assert udm_path is not None, f"UDM path not found for asset {asset_id}."
+            yield asset_id, geojson, img_path, udm_path
+
+
+    def _get_assets_as_bytes(self, input, storage_handler: StorageHandler):
+        asset_id, geojson, img_path, udm_path = input
+        _, img_bs = storage_handler.get_as_bytes(img_path)
+        _, udm_bs = storage_handler.get_as_bytes(udm_path)
+        return asset_id, geojson, img_bs, udm_bs
+
+
+    # def _save_samples(self, input, save_dir: str):
+    #     """
+    #     1. Make paths
+    #     2. Save gdal Datasets to paths
+    #     3. return paths
+    #     """
+    #     all_null, zoom, quad_key, asset_id, geojson_grid_cell_dataset, \
+    #         geotiff_grid_cell_dataset, udm_grid_cell_dataset = input
+
+    #     out_sub_dir = self.storage_handler.join_paths(
+    #         save_dir, self.TILES_DIR, "zoom_" + str(zoom), quad_key + '/'
+    #     )
+    #     # os.makedirs(out_sub_dir, exist_ok=True)
+    #     out_udm_path = self.storage_handler.join_paths(out_sub_dir, f"{asset_id}_udm.tif")
+    #     out_target_path = self.storage_handler.join_paths(out_sub_dir, f"{asset_id}_target.tif")
+    #     out_geotiff_path = self.storage_handler.join_paths(out_sub_dir, f"{asset_id}_geotiff.tif")
+
+    #     self.storage_handler.set_from_gdal_mem_dataset(out_target_path, geojson_grid_cell_dataset)
+    #     self.storage_handler.set_from_gdal_mem_dataset(out_udm_path, udm_grid_cell_dataset)
+    #     self.storage_handler.set_from_gdal_mem_dataset(out_geotiff_path, geotiff_grid_cell_dataset)
+    #     exit() ########################################################################################################################################################################################################
+    #     return all_null, zoom, quad_key, asset_id, out_udm_path, out_target_path, out_geotiff_path
+
+
+    def prepare_samples(
+        self, manifest_path: str, train: Optional[bool] = True,  
+        from_cloud_storage: Optional[bool] = True, src_base_dir: Optional[str] = None,
+        ext: str = ".tif", zooms: Optional[List[int]] = [15], truncate: Optional[bool] = True
+    ):
+        if from_cloud_storage:
+            StorageHandler = self.STORAGE_HANDLERS[GCSStorage.__name__]
+            storage_handler = StorageHandler()
+        else:
+            storage_handler = self.storage_handler
+        paths = storage_handler.get_paths(dir=src_base_dir)
+        paths = self._filter_paths_by_ext(paths, ext=ext)
+
+        # for path in paths:
+        #     print(path)
+        # exit()
+
+        data = Data(
+            self.load_order_manifest, path=manifest_path
+        )
+
+        data >> Transformer(self._get_asset_paths_from_list, paths=paths) \
+             >> Transformer(self._get_assets_as_bytes, storage_handler=storage_handler)
+            #  >> Transformer(self._get_tiles_from_bytes, zooms=zooms, truncate=truncate)
+
+
+        self.sample_handler.make_samples(
+            data=data, save_dir=self.save_dir, tiles_dir=self.TILES_DIR,
+            storage_handler=self.storage_handler,
+            train=train, zooms=zooms, truncate=truncate
+        )
+
+        # data >> Transformer(self._save_samples, save_dir=self.save_dir)        
+
+
+    def make_monthly_mosaic_interval(self, input, start, end):
+        path, bs = input
+        return (start, end), path, bs     
+
+
     def get_mosaic_time_str_from_start_end(self, start, end):
         dates = [start, end]
         start, end = [datetime.datetime.strptime(_, "%Y_%m") for _ in dates]
         return OrderedDict(((start + datetime.timedelta(_)).strftime(r"%Y_%m"), None) for _ in range((end - start).days)).keys()
 
 
-    def make_papi_monthly_mosaic_requests(self, tiles, geojson, start, end):
-        geojson_name = geojson["name"]
+    def make_papi_monthly_mosaic_requests(self, tiles, geojson, start, end, false_color_index):
+        try:
+            geojson_name = geojson["name"]
+        except KeyError:
+            geojson_name = "geojson"
         for tile in tiles:
             z = tile.z
             x = tile.x
@@ -625,27 +748,43 @@ class PlanetScope(ImageryHandler):
             request_urls = list()
             for year_month in self.get_mosaic_time_str_from_start_end(start, end):
                 request_url = f"https://tiles.planet.com/basemaps/v1/planet-tiles/global_monthly_{year_month}_mosaic/gmap/{z}/{x}/{y}.png?api_key={self.planet_api_key}"
+                if false_color_index:
+                    request_url += f"&proc={false_color_index}"
                 request_urls.append(request_url)
             yield request_urls, z, x, y, geojson_name
 
 
-    def make_monthly_mosaic_requests(self, input, zooms, truncate):
+    def make_monthly_mosaic_requests(self, input, zooms, truncate, false_color_index):
         (start, end), _, bs = input
-        geojson = json.load(bs)
+        geojson = json.loads(bs.read())
         tiles = self.get_tiles(geojson, zooms=zooms, truncate=truncate)
         requests = self.make_papi_monthly_mosaic_requests(
-            tiles=tiles, geojson=geojson, start=start, end=end,
+            tiles=tiles, geojson=geojson, start=start, end=end, false_color_index=false_color_index
         )
         yield from requests 
 
 
-    def post_monthly_mosaic_request(self, input):
+    # def post_monthly_mosaic_request(self, input):
+    #     request_urls, z, x, y, geojson_name = input
+    #     responses = list()
+    #     for request_url in request_urls:
+    #         response = requests.get(request_url, stream=True)
+    #         response.raise_for_status()
+    #         responses.append(response)
+    #     return responses, z, x, y, geojson_name
+
+
+    async def post_monthly_mosaic_request(self, input):
         request_urls, z, x, y, geojson_name = input
         responses = list()
-        for request_url in request_urls:
-            response = requests.get(request_url, stream=True)
-            responses.append(response)
-        return responses, z, x, y, geojson_name
+        async with aiohttp.ClientSession() as session:
+            for request_url in request_urls:
+                async with session.get(request_url) as response:
+                    response.raise_for_status()
+                    content = await response.read()
+                    responses.append(content)
+                    # print(response)
+        return responses, z, x, y, geojson_name     
 
 
     def save_responses_as_gif(self, input, start, end, duration, embed_date = True):
@@ -657,14 +796,15 @@ class PlanetScope(ImageryHandler):
         for response in responses:
             if embed_date:
                 date, response = response
-            img_bs = io.BytesIO(response.content)
+                year, month = date.split("_")
+            img_bs = io.BytesIO(response)
             img = Image.open(img_bs)  
             if embed_date: 
                 draw = ImageDraw.Draw(img)
                 # font = ImageFont.truetype(<font-file>, <font-size>)
                 # font = ImageFont.truetype("sans-serif.ttf", 16)
                 # draw.text((x, y),"Sample Text",(r,g,b))
-                draw.text((0, 0),f"{date}",(255,255,255))            
+                draw.text((0, 0),f"{year} {month} {z} {x} {y}",(255,255,255))            
             images.append(img)
         bs = io.BytesIO()
         imgs_iter = iter(images)
@@ -678,8 +818,40 @@ class PlanetScope(ImageryHandler):
         self.storage_handler.set_from_bytes(path, bs)     
 
 
+    def save_responses_as_pngs(self, input, start, end, embed_date = True, format = "png"):
+        responses, z, x, y, geojson_name = input
+        images = list()
+        dates = self.get_mosaic_time_str_from_start_end(start, end)
+        if embed_date:
+            responses = list(zip(dates, responses))
+        for response in responses:
+            if embed_date:
+                date, response = response
+                year, month = date.split("_")
+            img_bs = io.BytesIO(response)
+            img = Image.open(img_bs)  
+            if embed_date: 
+                draw = ImageDraw.Draw(img)
+                # font = ImageFont.truetype(<font-file>, <font-size>)
+                # font = ImageFont.truetype("sans-serif.ttf", 16)
+                # draw.text((x, y),"Sample Text",(r,g,b))
+                draw.text((0, 0),f"{year} {month} {z} {x} {y}",(255,255,255))            
+            images.append(img)
 
-    def make_timelapses(self, start, end, zooms, duration):
+        for date, image in list(zip(dates, images)):
+            bs = io.BytesIO()
+            image.save(fp=bs, format=format)
+            image_path = f"{geojson_name}/{z}_{x}_{y}/{start}_{end}/{date}.{format}"
+            path = self.storage_handler.join_paths(self.save_dir, self.PNGS_SUB_DIR, image_path)
+            self.storage_handler.set_from_bytes(path, bs)       
+
+
+    def make_timelapses(
+        self, start, end, zooms, duration, false_color_index = None, 
+        embed_date: Optional[bool] = True, make_gifs: Optional[bool] = True
+    ):
+        if false_color_index:
+            assert false_color_index in self.VALID_FC_INDICES, f"False color index {false_color_index} not recognized."
         data = Data(
             self.storage_handler.get_filepaths_from_dir, 
             dir=self.target_handler.targets_dir
@@ -687,10 +859,20 @@ class PlanetScope(ImageryHandler):
 
         with data:
             data >> Transformer(self.storage_handler.get_as_bytes) \
-                    >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
-                    >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, truncate=self.TRUNCATE) \
-                    >> Transformer(self.post_monthly_mosaic_request) \
-                    >> Transformer(self.save_responses_as_gif, start=start, end=end, duration=duration) 
+                >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
+                >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
+                    truncate=self.TRUNCATE, false_color_index=false_color_index) \
+                >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer())
+            if make_gifs:
+                data >> Transformer(
+                    self.save_responses_as_gif, start=start, end=end, 
+                    duration=duration, embed_date=embed_date
+                ) 
+            else:
+                data >> Transformer(
+                    self.save_responses_as_pngs, start=start, end=end, 
+                    embed_date=embed_date
+                )
 
 
 class CBERS(ImageryHandler):

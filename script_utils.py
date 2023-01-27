@@ -52,11 +52,11 @@ def get_random_string(length=12,
 
 
 def arg_is_true(arg_str: str) -> bool:
-    return arg_str in ("True", "TRUE", "true", "T", "t")
+    return arg_str in (True, "True", "TRUE", "true", "T", "t")
 
 
 def arg_is_false(arg_str: str) -> bool:
-    return arg_str in ("False", "FALSE", "false", "F", "f")
+    return arg_str in (False, "False", "FALSE", "false", "F", "f")
 
 
 def get_args(

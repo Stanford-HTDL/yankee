@@ -38,7 +38,7 @@ class GridCell(mercantile.Tile):
 
 @gdal_data_handlers.open_data
 def make_grid_cell_dataset(
-    grid_cell: GridCell, datum: Union[gdal.Dataset, ogr.DataSource], 
+    grid_cell: GridCell, datum: Union[gdal.Dataset, ogr.DataSource, dict], 
     datum_filepath: Optional[str] = None, return_filepaths: Optional[bool] = False,
     is_label: Optional[bool] = False, in_memory: Optional[bool] = True, 
     pixel_x_meters: Optional[float] = 3.0, 
@@ -48,11 +48,11 @@ def make_grid_cell_dataset(
     datetime_key: Optional[str] = DATETIME_KEY,
     default_dtype = gdal.GDT_Byte, default_n_bands = 1, 
     use_ancestor_driver = False, grid_cell_filepath: Optional[str] = None,
-    default_driver_name: Optional[str] = "GTIff",
+    default_driver_name: Optional[str] = "GTiff",
     no_data_value = None,
     *args, **kwargs
 ):
-    if datum_filepath is None:
+    if not in_memory and datum_filepath is None:
         datum_filepath = datum.GetDescription()
     qkey = mercantile.quadkey(grid_cell)
     # @TODO: MAKE FILEPATH FUNCTION A PARAMETER (CALLBACK)

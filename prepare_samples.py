@@ -11,13 +11,6 @@ SCRIPT_PATH = os.path.basename(__file__)
 DEFAULT_IMAGERY_TYPE = PlanetScope.__name__
 DEFAULT_DATASET_DIR = "datasets/"
 
-DEFAULT_START = "2019_01"
-DEFAULT_END = "2019_12"
-DEFAULT_ZOOMS = [16]
-DEFAULT_DURATION = 20.0
-DEFAULT_EMBED_DATE = True
-DEFAULT_MAKE_GIFS = True
-
 IMAGERY_HANDLERS = {
     PlanetScope.__name__: PlanetScope,
     CBERS.__name__: CBERS,
@@ -32,43 +25,27 @@ def parse_args():
         default=DEFAULT_IMAGERY_TYPE
     )
     parser.add_argument(
-        "--start",
-        default=DEFAULT_START
-    )
-    parser.add_argument(
-        "--end",
-        default=DEFAULT_END
-    )
-    parser.add_argument(
-        "--zooms",
-        nargs="+",
-        type=int,
-        default=DEFAULT_ZOOMS
-    )
-    parser.add_argument(
-        "--duration",
-        default=DEFAULT_DURATION,
-        type=float
-    )
-    parser.add_argument(
-        "--fc-index",
-        default=None
-    )    
-    parser.add_argument(
         "--id"
     )  
     parser.add_argument(
         "--data-dir",
         default=DEFAULT_DATASET_DIR
-    )     
-    parser.add_argument(
-        "--embed-date",
-        default=DEFAULT_EMBED_DATE,
     )
     parser.add_argument(
-        "--make-gifs",
-        default=DEFAULT_MAKE_GIFS,
-    )            
+        "--manifest-path",
+        required=True
+    )
+    parser.add_argument(
+        "--train",
+        default=True
+    )
+    parser.add_argument(
+        "--from-cloud-storage",
+        default=True
+    )    
+    parser.add_argument(
+        "--src-base-dir",
+    )
     p_args, _ = parser.parse_known_args()
     return p_args    
 
@@ -98,13 +75,10 @@ def main():
     ImageryHandler = IMAGERY_HANDLERS[imagery_type]
     img_handler = ImageryHandler(save_dir=save_dir)
 
-    start = args["start"]
-    end = args["end"]
-    zooms = [int(zoom) for zoom in args["zooms"]]
-    duration = float(args["duration"])
-    false_color_index = args["fc_index"]
-    embed_date = arg_is_true(args["embed_date"])
-    make_gifs = arg_is_true(args["make_gifs"])
+    manifest_path = args["manifest_path"]
+    train = arg_is_true(args["train"])
+    from_cloud_storage = arg_is_true(args["from_cloud_storage"])
+    src_base_dir = args["src_base_dir"]
 
     args = get_args(
         script_path=SCRIPT_PATH, log_filepath=log_filepath, **args, 
@@ -112,12 +86,11 @@ def main():
         dataset_id = dataset_id, time = time_str
     )
 
-    logging.info("Making timelapses...")
+    logging.info("Preparing samples...")
     
-    img_handler.make_timelapses(
-        start=start, end=end, zooms=zooms, duration=duration, 
-        false_color_index=false_color_index, embed_date=embed_date,
-        make_gifs=make_gifs
+    img_handler.prepare_samples(
+        manifest_path=manifest_path, train=train, 
+        from_cloud_storage=from_cloud_storage, src_base_dir=src_base_dir
     )
 
     logging.info(

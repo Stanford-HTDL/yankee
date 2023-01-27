@@ -2,8 +2,12 @@ import argparse
 import io
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Generator, Optional
 
+from google.cloud import storage
+from osgeo import gdal
+
+gdal.UseExceptions()
 
 class StorageHandler:
     __name__ = "StorageHandler"
@@ -67,17 +71,81 @@ class LocalStorage(StorageHandler):
             f.write(string)  
 
 
+    def set_from_gdal_mem_dataset(
+        self, out_path, dataset
+    ):
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        dset_tiff_out = gdal.GetDriverByName('GTiff')
+        dset_tiff_out.CreateCopy(out_path, dataset, 1)
+
+
     def join_paths(self, *args):
-        path = os.path.join(*args)
+        path = os.path.join(*args).replace('\\', '/')
         return path
 
 
+    def get_paths(self, dir: str):
+        raise NotImplementedError        
+
+
 class GCSStorage(StorageHandler):
-    __name__ = "GCSStorage"
+    __name__ = "GCSStorage"     
 
 
     def __init__(self):
-        raise NotImplementedError("This class has not been implemented yet.")      
+        args = self.parse_args()
+
+        gcs_creds = args["gcs_creds"]
+
+        if gcs_creds:
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gcs_creds
+
+        self.bucket = args["gcs_bucket"]
+        gcs_project_name = args["gcs_project_name"]
+        self.client = storage.Client(gcs_project_name)            
+
+        self.args = args
+
+
+    def parse_args(self):
+        parser = argparse.ArgumentParser()
+        parser.add_argument(
+            "--gcs-bucket",
+            required=True
+        )
+        parser.add_argument(
+            "--gcs-project-name",
+            required=True
+        )
+        parser.add_argument(
+            "--gcs-creds",
+            default=None
+        )              
+        args = super().parse_args(parser=parser)
+        return args
+
+
+    def get_paths(self, dir: str):
+        if not dir[-1] == "/":
+            dir += "/"
+        blobs = self.client.list_blobs(self.bucket, prefix=dir)
+        paths = [blob.name for blob in blobs]
+        return paths
+
+
+    def get_as_bytes(self, path):
+        bucket = self.client.get_bucket(self.bucket)
+        blob = bucket.blob(path)
+        bytes = blob.download_as_bytes()
+
+        bs = io.BytesIO()
+
+        # If you're deserializing from a bytestring:
+        bs.write(bytes)
+        # Or if you're deserializing from JSON:
+        # bs.write(json.loads(serialized_as_json).encode('latin-1'))
+        bs.seek(0)
+        return path, bs          
 
 
 class AWSStorage(StorageHandler):
