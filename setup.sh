@@ -4,9 +4,9 @@ MINIOUTPATH=miniconda.sh
 CONDAENV=yankee
 SETUPFILE=$CONDAENV.txt
 
-wget -O $MINIOUTPATH $MINICONDA
-bash $MINIOUTPATH
-conda create --name $CONDAENV --file $SETUPFILE
+# wget -O $MINIOUTPATH $MINICONDA
+# bash $MINIOUTPATH
+# conda create --name $CONDAENV --file $SETUPFILE
 
 ### Git setup ###
 # Uncomment the following lines if installing without pulling from git first
@@ -26,4 +26,6 @@ conda create --name $CONDAENV --file $SETUPFILE
 ### Setup Python script ###
 # conda run -n $CONDAENV python -m setup
 
-conda run -n $CONDAENV pip3 install light-pipe && pip3 install aiohttp && pip3 install Pillow
+conda run -n $CONDAENV pip3 install light-pipe \
+    && pip3 install aiohttp \
+    && pip3 install Pillow
