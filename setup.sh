@@ -28,4 +28,5 @@ SETUPFILE=$CONDAENV.txt
 
 conda run -n $CONDAENV pip3 install light-pipe \
     && pip3 install aiohttp \
-    && pip3 install Pillow
+    && pip3 install Pillow \
+    && pip3 install google-cloud-storage

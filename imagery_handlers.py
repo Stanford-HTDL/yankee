@@ -99,7 +99,7 @@ class PlanetScope(ImageryHandler):
         self.save_dir = save_dir
         args = self.parse_args()
 
-        self.test = args["test"]
+        self.test_order = args["test_order"]
 
         target_handler_name = args["target_handler"]
         TargetHandler = self.TARGET_HANDLERS[target_handler_name]
@@ -139,7 +139,7 @@ class PlanetScope(ImageryHandler):
     def parse_args(self):
         parser = argparse.ArgumentParser()
         parser.add_argument(
-            "--test",
+            "--test-order",
             default=False,
             type=bool
         )
@@ -575,7 +575,7 @@ class PlanetScope(ImageryHandler):
                 archive_filename=self.archive_filename, email=self.email_on_completion
              )
         
-        if not self.test:
+        if not self.test_order:
             data >> Transformer(
                 self.post_order_request, 
                 parallelizer=AiohttpGatherer(login=self.planet_api_key),
