@@ -790,7 +790,7 @@ class PlanetScope(ImageryHandler):
                 save_all=True, duration=duration, loop=0, interlace=False,
                 include_color_table=True)        
         # imageio.mimsave(bs, images, duration=duration)
-        timelapse_filename = f"{geojson_name}/{z}_{x}_{y}/{start}_{end}.{format}"
+        timelapse_filename = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}_{start}_{end}.{format}"
         path = self.storage_handler.join_paths(self.save_dir, self.TIMELAPSES_SUB_DIR, timelapse_filename)
         self.storage_handler.set_from_bytes(path, bs)     
 
@@ -818,7 +818,7 @@ class PlanetScope(ImageryHandler):
         for date, image in list(zip(dates, images)):
             bs = io.BytesIO()
             image.save(fp=bs, format=format)
-            image_path = f"{geojson_name}/{z}_{x}_{y}/{start}_{end}/{date}.{format}"
+            image_path = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{date}.{format}"
             path = self.storage_handler.join_paths(self.save_dir, self.PNGS_SUB_DIR, image_path)
             self.storage_handler.set_from_bytes(path, bs)       
 
