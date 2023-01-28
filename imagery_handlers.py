@@ -638,7 +638,7 @@ class PlanetScope(ImageryHandler):
 
     def _get_asset_paths_from_list(
         self, input: Tuple[str, dict], paths: List[str], 
-        assert_udm: Optional[bool] = True
+        assert_udm: Optional[bool] = True, no_path_ok: Optional[bool] = True
     ):
         _, order_dict = input    
         geojson = order_dict["geojson"]
@@ -654,7 +654,11 @@ class PlanetScope(ImageryHandler):
                         udm_path = path
                     else:
                         img_path = path
-            assert img_path is not None, f"Image path not found for asset {asset_id}."
+            if not img_path:
+                if no_path_ok:
+                    continue
+                else:
+                    raise FileNotFoundError(f"Image path not found for asset {asset_id}.")
             if assert_udm:
                 assert udm_path is not None, f"UDM path not found for asset {asset_id}."
             yield asset_id, geojson, img_path, udm_path
@@ -836,10 +840,10 @@ class PlanetScope(ImageryHandler):
 
         with data:
             data >> Transformer(self.storage_handler.get_as_bytes) \
-                >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
-                >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
-                    truncate=self.TRUNCATE, false_color_index=false_color_index) \
-                >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer())
+                 >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
+                 >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
+                     truncate=self.TRUNCATE, false_color_index=false_color_index) \
+                 >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer())
             if make_gifs:
                 data >> Transformer(
                     self.save_responses_as_gif, start=start, end=end, 
