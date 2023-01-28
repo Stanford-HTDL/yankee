@@ -13,15 +13,17 @@ conda create --name $CONDAENV --file $SETUPFILE
 #sudo apt-get update
 #sudo apt-get install git-all -y
 #GITPATH=https://github.com/rcorrero/$CONDAENV.git
-#git pull $GITPATH
+#git clone $GITPATH
 #echo "__pycache__ \n$MINIOUTPATH \nparameters/ \ndata/ \nmodels/ \nlogs/" >> .gitignore
 
-### Directory setup ###
-mkdir parameters
-mkdir parameters/experiments
-mkdir data
-mkdir models
-mkdir logs
+# ### Directory setup ###
+# mkdir parameters
+# mkdir parameters/experiments
+# mkdir data
+# mkdir models
+# mkdir logs
 
 ### Setup Python script ###
-conda run -n $CONDAENV python -m setup
+# conda run -n $CONDAENV python -m setup
+
+conda run -n $CONDAENV pip3 install light-pipe && pip3 install aiohttp && pip3 install Pillow
