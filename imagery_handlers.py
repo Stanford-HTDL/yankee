@@ -223,7 +223,8 @@ class PlanetScope(ImageryHandler):
         args = {
             **self.args, 
             **self.target_handler.args, 
-            **self.storage_handler.args
+            **self.storage_handler.args,
+            **self.sample_handler.args
         }
         return args
 
