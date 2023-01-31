@@ -1,4 +1,5 @@
-__author__ = "Richard Correro (rcorrero@stanford.edu)"
+__author__ = "Richard Correro (richard@richardcorrero.com)"
+
 
 __doc__ = """
 The module defines decorators which may be used to handle dataset opening and 

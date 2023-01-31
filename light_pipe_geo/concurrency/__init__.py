@@ -1,4 +1,4 @@
-__author__ = "Richard Correro (rcorrero@stanford.edu)"
+__author__ = "Richard Correro (richard@richardcorrero.com)"
 
 
 from .concurrency_handlers import *

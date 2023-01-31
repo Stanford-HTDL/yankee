@@ -1,8 +1,11 @@
+__author__ = "Richard Correro (richard@richardcorrero.com)"
+
+
 import argparse
 import io
 import os
 from pathlib import Path
-from typing import Generator, Optional
+from typing import Generator
 
 from google.cloud import storage
 from osgeo import gdal

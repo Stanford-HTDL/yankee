@@ -1,4 +1,4 @@
-__author__ = "Richard Correro (rcorrero@stanford.edu)"
+__author__ = "Richard Correro (richard@richardcorrero.com)"
 
 __doc__ = """
 This module contains decorators which can be used to execute user-defined

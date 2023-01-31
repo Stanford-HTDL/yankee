@@ -1,3 +1,6 @@
+__author__ = "Richard Correro (richard@richardcorrero.com)"
+
+
 from typing import AsyncGenerator, Iterable, Optional
 
 import aiohttp

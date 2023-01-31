@@ -1,4 +1,5 @@
-__author__ = "Richard Correro (rcorrero@stanford.edu)"
+__author__ = "Richard Correro (richard@richardcorrero.com)"
+
 
 __doc__ = """
 This module contains code used to generate standardized grid cell datasets from
