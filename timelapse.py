@@ -20,6 +20,7 @@ DEFAULT_ZOOMS = [15]
 DEFAULT_DURATION = 250.0
 DEFAULT_EMBED_DATE = True
 DEFAULT_MAKE_GIFS = True
+DEFAULT_SAVE_IMAGES = True
 
 IMAGERY_HANDLERS = {
     PlanetScope.__name__: PlanetScope,
@@ -72,6 +73,10 @@ def parse_args():
         "--make-gifs",
         default=DEFAULT_MAKE_GIFS,
     )            
+    parser.add_argument(
+        "--save-images",
+        default=DEFAULT_SAVE_IMAGES,
+    )       
     p_args, _ = parser.parse_known_args()
     return p_args    
 
@@ -108,6 +113,7 @@ def main():
     false_color_index = args["fc_index"]
     embed_date = arg_is_true(args["embed_date"])
     make_gifs = arg_is_true(args["make_gifs"])
+    save_images = arg_is_true(args["save_images"])
 
     args = get_args(
         script_path=SCRIPT_PATH, log_filepath=log_filepath, **args, 
@@ -120,7 +126,7 @@ def main():
     img_handler.make_timelapses(
         start=start, end=end, zooms=zooms, duration=duration, 
         false_color_index=false_color_index, embed_date=embed_date,
-        make_gifs=make_gifs
+        make_gifs=make_gifs, save_images=save_images
     )
 
     logging.info(

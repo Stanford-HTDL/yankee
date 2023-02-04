@@ -771,38 +771,70 @@ class PlanetScope(ImageryHandler):
         return responses, z, x, y, geojson_name     
 
 
-    def save_responses_as_gif(self, input, start, end, duration, embed_date = True, format = "gif"):
-        responses, z, x, y, geojson_name = input
-        images = list()
-        if embed_date:
-            dates = self.get_mosaic_time_str_from_start_end(start, end)
-            responses = list(zip(dates, responses))
-        for response in responses:
-            if embed_date:
-                date, response = response
-                year, month = date.split("_")
-            img_bs = io.BytesIO(response)
-            img = Image.open(img_bs)  
-            if embed_date: 
-                draw = ImageDraw.Draw(img)
-                # font = ImageFont.truetype(<font-file>, <font-size>)
-                # font = ImageFont.truetype("sans-serif.ttf", 16)
-                # draw.text((x, y),"Sample Text",(r,g,b))
-                draw.text((0, 0),f"{year} {month} {z} {x} {y}",(255,255,255))            
-            images.append(img)
-        bs = io.BytesIO()
-        imgs_iter = iter(images)
-        first_img = next(imgs_iter)
-        first_img.save(fp=bs, format='GIF', append_images=imgs_iter,
-                save_all=True, duration=duration, loop=0, interlace=False,
-                include_color_table=True)        
-        # imageio.mimsave(bs, images, duration=duration)
-        timelapse_filename = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}_{start}_{end}.{format}"
-        path = self.storage_handler.join_paths(self.save_dir, self.TIMELAPSES_SUB_DIR, timelapse_filename)
-        self.storage_handler.set_from_bytes(path, bs)     
+    # def save_responses_as_gif(self, input, start, end, duration, embed_date = True, format = "gif"):
+    #     responses, z, x, y, geojson_name = input
+    #     images = list()
+    #     if embed_date:
+    #         dates = self.get_mosaic_time_str_from_start_end(start, end)
+    #         responses = list(zip(dates, responses))
+    #     for response in responses:
+    #         if embed_date:
+    #             date, response = response
+    #             year, month = date.split("_")
+    #         img_bs = io.BytesIO(response)
+    #         img = Image.open(img_bs)  
+    #         if embed_date: 
+    #             draw = ImageDraw.Draw(img)
+    #             # font = ImageFont.truetype(<font-file>, <font-size>)
+    #             # font = ImageFont.truetype("sans-serif.ttf", 16)
+    #             # draw.text((x, y),"Sample Text",(r,g,b))
+    #             draw.text((0, 0),f"{year} {month} {z} {x} {y}",(255,255,255))            
+    #         images.append(img)
+    #     bs = io.BytesIO()
+    #     imgs_iter = iter(images)
+    #     first_img = next(imgs_iter)
+    #     first_img.save(fp=bs, format='GIF', append_images=imgs_iter,
+    #             save_all=True, duration=duration, loop=0, interlace=False,
+    #             include_color_table=True)        
+    #     # imageio.mimsave(bs, images, duration=duration)
+    #     timelapse_filename = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}_{start}_{end}.{format}"
+    #     path = self.storage_handler.join_paths(self.save_dir, self.TIMELAPSES_SUB_DIR, timelapse_filename)
+    #     self.storage_handler.set_from_bytes(path, bs)     
 
 
-    def save_responses_as_pngs(self, input, start, end, embed_date = True, format = "png"):
+    # def save_responses_as_pngs(self, input, start, end, embed_date = True, format = "png"):
+    #     responses, z, x, y, geojson_name = input
+    #     images = list()
+    #     dates = self.get_mosaic_time_str_from_start_end(start, end)
+    #     if embed_date:
+    #         responses = list(zip(dates, responses))
+    #     for response in responses:
+    #         if embed_date:
+    #             date, response = response
+    #             year, month = date.split("_")
+    #         img_bs = io.BytesIO(response)
+    #         img = Image.open(img_bs)  
+    #         if embed_date: 
+    #             draw = ImageDraw.Draw(img)
+    #             # font = ImageFont.truetype(<font-file>, <font-size>)
+    #             # font = ImageFont.truetype("sans-serif.ttf", 16)
+    #             # draw.text((x, y),"Sample Text",(r,g,b))
+    #             draw.text((0, 0),f"{year} {month} {z} {x} {y}",(255,255,255))            
+    #         images.append(img)
+
+    #     for date, image in list(zip(dates, images)):
+    #         bs = io.BytesIO()
+    #         image.save(fp=bs, format=format)
+    #         image_path = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{date}.{format}"
+    #         path = self.storage_handler.join_paths(self.save_dir, self.PNGS_SUB_DIR, image_path)
+    #         self.storage_handler.set_from_bytes(path, bs)
+
+
+    def save_responses(
+        self, input, start, end, duration, make_gifs: Optional[bool] = False,
+        save_images: Optional[bool] = True, embed_date = True, 
+        timelapse_format: Optional[str] = "gif", image_format: Optional[str] = "png"
+    ) -> None:
         responses, z, x, y, geojson_name = input
         images = list()
         dates = self.get_mosaic_time_str_from_start_end(start, end)
@@ -822,17 +854,60 @@ class PlanetScope(ImageryHandler):
                 draw.text((0, 0),f"{year} {month} {z} {x} {y}",(255,255,255))            
             images.append(img)
 
-        for date, image in list(zip(dates, images)):
+        if make_gifs:
             bs = io.BytesIO()
-            image.save(fp=bs, format=format)
-            image_path = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{date}.{format}"
-            path = self.storage_handler.join_paths(self.save_dir, self.PNGS_SUB_DIR, image_path)
-            self.storage_handler.set_from_bytes(path, bs)       
+            imgs_iter = iter(images)
+            first_img = next(imgs_iter)
+            first_img.save(fp=bs, format='GIF', append_images=imgs_iter,
+                    save_all=True, duration=duration, loop=0, interlace=False,
+                    include_color_table=True)        
+            # imageio.mimsave(bs, images, duration=duration)
+            timelapse_filename = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{start}_{end}.{timelapse_format}"
+            path = self.storage_handler.join_paths(self.save_dir, self.TIMELAPSES_SUB_DIR, timelapse_filename)
+            self.storage_handler.set_from_bytes(path, bs)                 
+
+        if save_images:
+            for date, image in list(zip(dates, images)):
+                bs = io.BytesIO()
+                image.save(fp=bs, format=image_format)
+                image_path = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{date}.{image_format}"
+                path = self.storage_handler.join_paths(self.save_dir, self.PNGS_SUB_DIR, image_path)
+                self.storage_handler.set_from_bytes(path, bs)                
+
+
+    # def make_timelapses(
+    #     self, start, end, zooms, duration, false_color_index = None, 
+    #     embed_date: Optional[bool] = True, make_gifs: Optional[bool] = True
+    # ):
+    #     if false_color_index:
+    #         assert false_color_index in self.VALID_FC_INDICES, f"False color index {false_color_index} not recognized."
+    #     data = Data(
+    #         self.storage_handler.get_filepaths_from_dir, 
+    #         dir=self.target_handler.targets_dir
+    #     )
+
+    #     with data:
+    #         data >> Transformer(self.storage_handler.get_as_bytes) \
+    #              >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
+    #              >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
+    #                  truncate=self.TRUNCATE, false_color_index=false_color_index) \
+    #              >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer())
+    #         if make_gifs:
+    #             data >> Transformer(
+    #                 self.save_responses_as_gif, start=start, end=end, 
+    #                 duration=duration, embed_date=embed_date
+    #             ) 
+    #         else:
+    #             data >> Transformer(
+    #                 self.save_responses_as_pngs, start=start, end=end, 
+    #                 embed_date=embed_date
+    #             )
 
 
     def make_timelapses(
         self, start, end, zooms, duration, false_color_index = None, 
-        embed_date: Optional[bool] = True, make_gifs: Optional[bool] = True
+        embed_date: Optional[bool] = True, make_gifs: Optional[bool] = True,
+        save_images: Optional[bool] = True
     ):
         if false_color_index:
             assert false_color_index in self.VALID_FC_INDICES, f"False color index {false_color_index} not recognized."
@@ -846,17 +921,12 @@ class PlanetScope(ImageryHandler):
                  >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
                  >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
                      truncate=self.TRUNCATE, false_color_index=false_color_index) \
-                 >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer())
-            if make_gifs:
-                data >> Transformer(
-                    self.save_responses_as_gif, start=start, end=end, 
-                    duration=duration, embed_date=embed_date
-                ) 
-            else:
-                data >> Transformer(
-                    self.save_responses_as_pngs, start=start, end=end, 
-                    embed_date=embed_date
-                )
+                 >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer()) \
+                 >> Transformer(
+                    self.save_responses, start=start, end=end, 
+                    duration=duration, embed_date=embed_date, make_gifs=make_gifs,
+                    save_images=save_images
+            )            
 
 
 class CBERS(ImageryHandler):
