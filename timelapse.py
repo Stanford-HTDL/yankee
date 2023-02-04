@@ -22,6 +22,8 @@ DEFAULT_EMBED_DATE = True
 DEFAULT_MAKE_GIFS = True
 DEFAULT_SAVE_IMAGES = True
 
+DEFAULT_TARGET_VALUE = 1
+
 IMAGERY_HANDLERS = {
     PlanetScope.__name__: PlanetScope,
     CBERS.__name__: CBERS,
@@ -76,7 +78,15 @@ def parse_args():
     parser.add_argument(
         "--save-images",
         default=DEFAULT_SAVE_IMAGES,
-    )       
+    )
+    parser.add_argument(
+        "--preds-csv-path",
+        default=None,
+    )
+    parser.add_argument(
+        "--target-value",
+        default=DEFAULT_TARGET_VALUE
+    )
     p_args, _ = parser.parse_known_args()
     return p_args    
 
@@ -116,6 +126,9 @@ def main():
     make_gifs = arg_is_true(args["make_gifs"])
     save_images = arg_is_true(args["save_images"])
 
+    preds_csv_path = args["preds_csv_path"]
+    target_value = int(args["target_value"])
+
     args = get_args(
         script_path=SCRIPT_PATH, log_filepath=log_filepath, **args, 
         **img_handler.get_args(),
@@ -127,7 +140,8 @@ def main():
     img_handler.make_timelapses(
         start=start, end=end, zooms=zooms, duration=duration, 
         false_color_index=false_color_index, embed_date=embed_date,
-        make_gifs=make_gifs, save_images=save_images
+        make_gifs=make_gifs, save_images=save_images, preds_csv_path=preds_csv_path,
+        target_value=target_value
     )
 
     logging.info(

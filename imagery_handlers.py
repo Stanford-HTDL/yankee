@@ -14,6 +14,7 @@ import aiohttp
 # import requests
 from light_pipe import AsyncGatherer, Data, Transformer
 from PIL import Image, ImageDraw
+import pandas as pd
 
 from light_pipe_geo import mercantile
 from light_pipe_rest import AiohttpGatherer
@@ -721,10 +722,13 @@ class PlanetScope(ImageryHandler):
 
 
     def make_papi_monthly_mosaic_requests(self, tiles, geojson, start, end, false_color_index):
-        try:
-            geojson_name = geojson["name"]
-        except KeyError:
-            geojson_name = "geojson"
+        if geojson:
+            try:
+                geojson_name = geojson["name"]
+            except KeyError:
+                geojson_name = "geojson"
+        else:
+            geojson_name = "xyz"
         for tile in tiles:
             z = tile.z
             x = tile.x
@@ -746,6 +750,15 @@ class PlanetScope(ImageryHandler):
             tiles=tiles, geojson=geojson, start=start, end=end, false_color_index=false_color_index
         )
         yield from requests 
+
+    def _make_monthly_mosaic_requests_from_tile(
+        self, tile: mercantile.Tile, start: str, end: str, false_color_index
+    ) -> Generator:
+        tiles = [tile]
+        requests = self.make_papi_monthly_mosaic_requests(
+            tiles=tiles, geojson=None, start=start, end=end, false_color_index=false_color_index
+        )
+        yield from requests         
 
 
     # def post_monthly_mosaic_request(self, input):
@@ -904,29 +917,84 @@ class PlanetScope(ImageryHandler):
     #             )
 
 
-    def make_timelapses(
+    def _get_tile_from_preds_csv_path(
+        self, preds_csv_path: str, 
+        target_column_name: Optional[str] = "Predicted Class", 
+        target_value: Optional[int] = 1,
+        coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"]
+    ):
+        df = pd.read_csv(preds_csv_path)
+        if target_column_name is not None:
+            tile_coordinates = df[df[target_column_name] == target_value][coordinate_column_names]
+        else:
+            tile_coordinates = df
+        print(tile_coordinates.values)
+        for tile_coords in tile_coordinates.values:
+            z = tile_coords[0]
+            x = tile_coords[1]
+            y = tile_coords[2]
+            tile = mercantile.Tile(x=x, y=y, z=z)
+            yield tile
+
+
+    def _make_timelapses_from_preds_csv_path(
         self, start, end, zooms, duration, false_color_index = None, 
         embed_date: Optional[bool] = True, make_gifs: Optional[bool] = True,
-        save_images: Optional[bool] = True
+        save_images: Optional[bool] = True, preds_csv_path: Optional[str] = None,
+        target_column_name: Optional[str] = "Predicted Class", 
+        target_value: Optional[int] = 1,
+        coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"]
     ):
-        if false_color_index:
-            assert false_color_index in self.VALID_FC_INDICES, f"False color index {false_color_index} not recognized."
         data = Data(
-            self.storage_handler.get_filepaths_from_dir, 
-            dir=self.target_handler.targets_dir
+            self._get_tile_from_preds_csv_path, 
+            preds_csv_path=preds_csv_path, target_column_name=target_column_name,
+            target_value=target_value, coordinate_column_names=coordinate_column_names
         )
 
         with data:
-            data >> Transformer(self.storage_handler.get_as_bytes) \
-                 >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
-                 >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
-                     truncate=self.TRUNCATE, false_color_index=false_color_index) \
+            data >> Transformer(self._make_monthly_mosaic_requests_from_tile, 
+                        start=start, end=end, false_color_index=false_color_index
+                    ) \
                  >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer()) \
                  >> Transformer(
-                    self.save_responses, start=start, end=end, 
-                    duration=duration, embed_date=embed_date, make_gifs=make_gifs,
-                    save_images=save_images
-            )            
+                        self.save_responses, start=start, end=end, 
+                        duration=duration, embed_date=embed_date, make_gifs=make_gifs,
+                        save_images=save_images
+            )    
+
+
+    def make_timelapses(
+        self, start, end, zooms, duration, false_color_index = None, 
+        embed_date: Optional[bool] = True, make_gifs: Optional[bool] = True,
+        save_images: Optional[bool] = True, preds_csv_path: Optional[str] = None,
+        **kwargs
+    ):
+        if false_color_index:
+            assert false_color_index in self.VALID_FC_INDICES, f"False color index {false_color_index} not recognized."
+        if preds_csv_path:
+            self._make_timelapses_from_preds_csv_path(
+                start=start, end=end, zooms=zooms, duration=duration, 
+                false_color_index=false_color_index, embed_date=embed_date, 
+                make_gifs=make_gifs, save_images=save_images, 
+                preds_csv_path=preds_csv_path, **kwargs
+            )
+        else:
+            data = Data(
+                self.storage_handler.get_filepaths_from_dir, 
+                dir=self.target_handler.targets_dir
+            )
+
+            with data:
+                data >> Transformer(self.storage_handler.get_as_bytes) \
+                    >> Transformer(self.make_monthly_mosaic_interval, start=start, end=end) \
+                    >> Transformer(self.make_monthly_mosaic_requests, zooms=zooms, 
+                        truncate=self.TRUNCATE, false_color_index=false_color_index) \
+                    >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer()) \
+                    >> Transformer(
+                        self.save_responses, start=start, end=end, 
+                        duration=duration, embed_date=embed_date, make_gifs=make_gifs,
+                        save_images=save_images
+                )
 
 
 class CBERS(ImageryHandler):
