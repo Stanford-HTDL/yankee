@@ -60,8 +60,9 @@ def main():
     else:
         dataset_id = args["id"]
     dataset_super_dir = args["data_dir"]
+    time_str = time.strftime("%Y%m%d_%H%M%S", time.gmtime())  
     dataset_dir = os.path.join(
-        dataset_super_dir, dataset_id + "/"
+        dataset_super_dir, dataset_id, f"{time_str}/"
     ).replace("\\", "/")
     log_dir = os.path.join(dataset_dir, 'logs/').replace("\\", "/")
     save_dir = os.path.join(

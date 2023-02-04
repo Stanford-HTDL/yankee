@@ -88,8 +88,9 @@ def main():
     else:
         dataset_id = args["id"]
     dataset_super_dir = args["data_dir"]
+    time_str = time.strftime("%Y%m%d_%H%M%S", time.gmtime())  
     dataset_dir = os.path.join(
-        dataset_super_dir, dataset_id + "/"
+        dataset_super_dir, dataset_id, f"{time_str}/"
     ).replace("\\", "/")
     log_dir = os.path.join(dataset_dir, 'logs/').replace("\\", "/")
     save_dir = os.path.join(
@@ -97,7 +98,7 @@ def main():
     ).replace("\\", "/")
     os.makedirs(log_dir, exist_ok=True)
     os.makedirs(save_dir, exist_ok=True)
-    time_str = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
+    # time_str = time.strftime("%Y%m%d_%H%M%S", time.gmtime())
     log_filepath = os.path.join(
         log_dir, f"{SCRIPT_PATH}_{time_str}_{dataset_id}.log"
     ).replace('\\', '/')
