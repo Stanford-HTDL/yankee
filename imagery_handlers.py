@@ -8,7 +8,7 @@ import io
 import json
 import logging
 from collections import OrderedDict
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, List, Optional, Tuple, Set
 
 import aiohttp
 # import requests
@@ -928,7 +928,6 @@ class PlanetScope(ImageryHandler):
             tile_coordinates = df[df[target_column_name] == target_value][coordinate_column_names]
         else:
             tile_coordinates = df
-        print(tile_coordinates.values)
         for tile_coords in tile_coordinates.values:
             z = tile_coords[0]
             x = tile_coords[1]
@@ -945,11 +944,19 @@ class PlanetScope(ImageryHandler):
         target_value: Optional[int] = 1,
         coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"]
     ):
+        def yield_tiles(tiles: Set[mercantile.Tile]) -> Generator:
+            yield from tiles
+
+
         data = Data(
             self._get_tile_from_preds_csv_path, 
             preds_csv_path=preds_csv_path, target_column_name=target_column_name,
             target_value=target_value, coordinate_column_names=coordinate_column_names
         )
+        tiles: List[mercantile.Tile] = data(block=True, no_return=False) # Accumulate tiles
+        tiles = set(tiles) # Remove duplicates
+
+        data = Data(yield_tiles, tiles=tiles)
 
         with data:
             data >> Transformer(self._make_monthly_mosaic_requests_from_tile, 
