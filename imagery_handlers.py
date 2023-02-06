@@ -918,16 +918,17 @@ class PlanetScope(ImageryHandler):
 
 
     def _get_tile_from_preds_csv_path(
-        self, preds_csv_path: str, 
+        self, preds_csv_path: str,
+        filter_by_target_value: Optional[bool] = False,
         target_column_name: Optional[str] = "Predicted Class", 
         target_value: Optional[int] = 1,
         coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"]
     ):
         df = pd.read_csv(preds_csv_path)
-        if target_column_name is not None:
+        if filter_by_target_value and target_column_name is not None:
             tile_coordinates = df[df[target_column_name] == target_value][coordinate_column_names]
         else:
-            tile_coordinates = df
+            tile_coordinates = df[coordinate_column_names]
         for tile_coords in tile_coordinates.values:
             z = tile_coords[0]
             x = tile_coords[1]
@@ -944,8 +945,8 @@ class PlanetScope(ImageryHandler):
         target_value: Optional[int] = 1,
         coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"]
     ):
-        def yield_tiles(tiles: Set[mercantile.Tile]) -> Generator:
-            yield from tiles
+        # def yield_tiles(tiles: Set[mercantile.Tile]) -> Generator:
+        #     yield from tiles
 
 
         data = Data(
@@ -956,7 +957,7 @@ class PlanetScope(ImageryHandler):
         tiles: List[mercantile.Tile] = data(block=True, no_return=False) # Accumulate tiles
         tiles = set(tiles) # Remove duplicates
 
-        data = Data(yield_tiles, tiles=tiles)
+        data = Data(tiles)
 
         with data:
             data >> Transformer(self._make_monthly_mosaic_requests_from_tile, 
