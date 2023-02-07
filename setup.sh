@@ -5,8 +5,8 @@ CONDAENV=yankee
 SETUPFILE=$CONDAENV.txt
 
 # wget -O $MINIOUTPATH $MINICONDA
-# bash $MINIOUTPATH
-# conda create --name $CONDAENV --file $SETUPFILE
+bash $MINIOUTPATH
+conda create --name $CONDAENV --file $SETUPFILE
 
 ### Git setup ###
 # Uncomment the following lines if installing without pulling from git first
@@ -30,3 +30,6 @@ conda run -n $CONDAENV pip3 install light-pipe \
     && pip3 install aiohttp \
     && pip3 install Pillow \
     && pip3 install google-cloud-storage
+
+### GCloud Setup
+# gcloud init --no-browser      
