@@ -943,7 +943,8 @@ class PlanetScope(ImageryHandler):
         save_images: Optional[bool] = True, preds_csv_path: Optional[str] = None,
         target_column_name: Optional[str] = "Predicted Class", 
         target_value: Optional[int] = 1,
-        coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"]
+        coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"],
+        num_tiles_per_sublist: Optional[int] = 128
     ):
         # def yield_tiles(tiles: Set[mercantile.Tile]) -> Generator:
         #     yield from tiles
@@ -957,18 +958,24 @@ class PlanetScope(ImageryHandler):
         tiles: List[mercantile.Tile] = data(block=True, no_return=False) # Accumulate tiles
         tiles = set(tiles) # Remove duplicates
 
-        data = Data(tiles)
+        # Chunk tiles to prevent order bottlenecks
+        tiles = [
+            tiles[i:i + num_tiles_per_sublist] for i in range(0, len(tiles), num_tiles_per_sublist)
+        ]
 
-        with data:
-            data >> Transformer(self._make_monthly_mosaic_requests_from_tile, 
-                        start=start, end=end, false_color_index=false_color_index
-                    ) \
-                 >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer()) \
-                 >> Transformer(
-                        self.save_responses, start=start, end=end, 
-                        duration=duration, embed_date=embed_date, make_gifs=make_gifs,
-                        save_images=save_images
-            )    
+        for tile_chunk in tiles:
+            data = Data(tile_chunk)
+
+            with data:
+                data >> Transformer(self._make_monthly_mosaic_requests_from_tile, 
+                            start=start, end=end, false_color_index=false_color_index
+                        ) \
+                    >> Transformer(self.post_monthly_mosaic_request, parallelizer=AsyncGatherer()) \
+                    >> Transformer(
+                            self.save_responses, start=start, end=end, 
+                            duration=duration, embed_date=embed_date, make_gifs=make_gifs,
+                            save_images=save_images
+                )    
 
 
     def make_timelapses(
