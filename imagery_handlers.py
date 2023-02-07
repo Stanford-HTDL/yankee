@@ -956,7 +956,7 @@ class PlanetScope(ImageryHandler):
             target_value=target_value, coordinate_column_names=coordinate_column_names
         )
         tiles: List[mercantile.Tile] = data(block=True, no_return=False) # Accumulate tiles
-        tiles = set(tiles) # Remove duplicates
+        tiles = list(set(tiles)) # Remove duplicates
 
         # Chunk tiles to prevent order bottlenecks
         tiles = [
