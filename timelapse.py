@@ -23,6 +23,7 @@ DEFAULT_MAKE_GIFS = True
 DEFAULT_SAVE_IMAGES = True
 
 DEFAULT_TARGET_VALUE = 1
+DEFAULT_FILTER_BY_TARGET_VALUE = True
 
 IMAGERY_HANDLERS = {
     PlanetScope.__name__: PlanetScope,
@@ -87,6 +88,10 @@ def parse_args():
         "--target-value",
         default=DEFAULT_TARGET_VALUE
     )
+    parser.add_argument(
+        "--filter-by-target-value",
+        default=DEFAULT_FILTER_BY_TARGET_VALUE
+    )
     p_args, _ = parser.parse_known_args()
     return p_args    
 
@@ -125,6 +130,7 @@ def main():
     embed_date = arg_is_true(args["embed_date"])
     make_gifs = arg_is_true(args["make_gifs"])
     save_images = arg_is_true(args["save_images"])
+    filter_by_target_value = arg_is_true(args["filter_by_target_value"])
 
     preds_csv_path = args["preds_csv_path"]
     target_value = int(args["target_value"])
@@ -141,7 +147,7 @@ def main():
         start=start, end=end, zooms=zooms, duration=duration, 
         false_color_index=false_color_index, embed_date=embed_date,
         make_gifs=make_gifs, save_images=save_images, preds_csv_path=preds_csv_path,
-        target_value=target_value
+        target_value=target_value, filter_by_target_value=filter_by_target_value
     )
 
     logging.info(

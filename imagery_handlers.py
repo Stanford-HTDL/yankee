@@ -944,7 +944,8 @@ class PlanetScope(ImageryHandler):
         target_column_name: Optional[str] = "Predicted Class", 
         target_value: Optional[int] = 1,
         coordinate_column_names: Optional[List[str]] = ["Z", "X", "Y"],
-        num_tiles_per_sublist: Optional[int] = 128
+        num_tiles_per_sublist: Optional[int] = 128,
+        filter_by_target_value: Optional[bool] = False
     ):
         # def yield_tiles(tiles: Set[mercantile.Tile]) -> Generator:
         #     yield from tiles
@@ -953,7 +954,8 @@ class PlanetScope(ImageryHandler):
         data = Data(
             self._get_tile_from_preds_csv_path, 
             preds_csv_path=preds_csv_path, target_column_name=target_column_name,
-            target_value=target_value, coordinate_column_names=coordinate_column_names
+            target_value=target_value, coordinate_column_names=coordinate_column_names,
+            filter_by_target_value=filter_by_target_value
         )
         tiles: List[mercantile.Tile] = data(block=True, no_return=False) # Accumulate tiles
         tiles = list(set(tiles)) # Remove duplicates
