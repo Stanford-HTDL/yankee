@@ -361,7 +361,7 @@ class PlanetScope(ImageryHandler):
         self, input: Tuple[Tuple[datetime.datetime, datetime.datetime], str, io.BytesIO]
     ):
         (start, end), path, bs = input
-        geojson = json.loads(bs.read())
+        geojson = json.loads(bs.read().decode('utf-8'))
         filters = self._make_papi_one_filters(
             max_cloud_cover=self.max_cloud_cover, 
             asset_names=self.asset_names
@@ -744,7 +744,7 @@ class PlanetScope(ImageryHandler):
 
     def make_monthly_mosaic_requests(self, input, zooms, truncate, false_color_index):
         (start, end), _, bs = input
-        geojson = json.loads(bs.read())
+        geojson = json.loads(bs.read().decode('utf-8'))
         tiles = self.get_tiles(geojson, zooms=zooms, truncate=truncate)
         requests = self.make_papi_monthly_mosaic_requests(
             tiles=tiles, geojson=geojson, start=start, end=end, false_color_index=false_color_index
@@ -875,7 +875,7 @@ class PlanetScope(ImageryHandler):
                     save_all=True, duration=duration, loop=0, interlace=False,
                     include_color_table=True)        
             # imageio.mimsave(bs, images, duration=duration)
-            timelapse_filename = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{start}_{end}.{timelapse_format}"
+            timelapse_filename = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{z}_{x}_{y}_{start}_{end}.{timelapse_format}"
             path = self.storage_handler.join_paths(self.save_dir, self.TIMELAPSES_SUB_DIR, timelapse_filename)
             self.storage_handler.set_from_bytes(path, bs)                 
 
@@ -883,7 +883,7 @@ class PlanetScope(ImageryHandler):
             for date, image in list(zip(dates, images)):
                 bs = io.BytesIO()
                 image.save(fp=bs, format=image_format)
-                image_path = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{date}.{image_format}"
+                image_path = f"{start}_{end}/{z}/{geojson_name}/{z}_{x}_{y}/{z}_{x}_{y}_{date}.{image_format}"
                 path = self.storage_handler.join_paths(self.save_dir, self.PNGS_SUB_DIR, image_path)
                 self.storage_handler.set_from_bytes(path, bs)                
 
