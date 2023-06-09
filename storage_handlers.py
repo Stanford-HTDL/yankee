@@ -5,7 +5,7 @@ import argparse
 import io
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List, Optional, Union
 
 from google.cloud import storage
 from osgeo import gdal
@@ -42,17 +42,31 @@ class LocalStorage(StorageHandler):
         return args
 
 
-    def get_filepaths_from_dir(self, dir: str) -> Generator:
-        assert os.path.exists(dir), f"Directory {dir} does not exist."
-        if os.path.isdir(dir):
-            filepaths = [
-                os.path.abspath(os.path.join(dir, x)) for x in os.listdir(dir)
-            ]
-        else:
-            filepaths = [dir]
-        for filepath in filepaths:
-            fp = Path(filepath)
-            yield fp  
+    # def get_filepaths_from_dir(self, dir: str) -> Generator:
+    #     assert os.path.exists(dir), f"Directory {dir} does not exist."
+    #     if os.path.isdir(dir):
+    #         filepaths = [
+    #             os.path.abspath(os.path.join(dir, x)) for x in os.listdir(dir)
+    #         ]
+    #     else:
+    #         filepaths = [dir]
+    #     for filepath in filepaths:
+    #         fp = Path(filepath)
+    #         yield fp
+
+
+    def get_filepaths_from_dir(
+        self, dir: str, extension: Optional[Union[str, None]] = None,
+        ignore_hidden_files: Optional[bool] = True
+    ) -> Generator:
+        for root, _, files in os.walk(dir):
+            for file in files:
+                if ignore_hidden_files and file.startswith("."):
+                    continue
+                if extension is None or file.endswith(extension):
+                    filepath: str = os.path.join(root, file).replace("\\", "/")
+                    path: Path = Path(filepath)
+                    yield path
 
 
     def get_as_bytes(self, path):

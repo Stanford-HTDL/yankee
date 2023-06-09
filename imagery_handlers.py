@@ -532,7 +532,7 @@ class PlanetScope(ImageryHandler):
                 >> Transformer(
                     self.post_request, parallelizer=AiohttpGatherer(login=self.planet_api_key), 
                     url=self.PAPI_ONE_URL, max_order_size=self.max_order_size
-                ) \
+                )
 
         results = data(block=True)
 
